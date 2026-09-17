@@ -126,6 +126,8 @@
     const status = document.getElementById('status');
     const submitBtn = document.getElementById('submitBtn');
     const UPI_ID = 'placementempire@slc';
+    // Paste your deployed Google Apps Script Web App /exec URL between the quotes.
+    const BACKEND_URL = 'PASTE_YOUR_GOOGLE_APPS_SCRIPT_EXEC_URL_HERE';
 
     function getSummary() {
       const key = category.value;
@@ -168,6 +170,24 @@
 
     function setStatus(message, type = 'info') { status.textContent = message; status.className = type; }
 
+    async function saveRegistrationToSheet({ name, mobile, email, reference, key, count }) {
+      if (BACKEND_URL === 'PASTE_YOUR_GOOGLE_APPS_SCRIPT_EXEC_URL_HERE') {
+        throw new Error('Google Apps Script /exec URL has not been configured.');
+      }
+      const response = await fetch(BACKEND_URL, {
+        method: 'POST',
+        mode: 'cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          action: 'register', name, mobile, email,
+          utr: reference, categoryKey: key, quantity: count
+        })
+      });
+      const result = await response.json();
+      if (!result.ok) throw new Error(result.error || 'Registration was not saved.');
+      return result;
+    }
+
     category.addEventListener('change', updateSummary);
     quantity.addEventListener('input', updateSummary);
     window.addEventListener('load', updateSummary);
@@ -188,11 +208,12 @@
         const mobile = document.getElementById('mobile').value.trim();
         const email = document.getElementById('email').value.trim();
         const reference = document.getElementById('reference').value.trim();
+        const savedRegistration = await saveRegistrationToSheet({ name, mobile, email, reference, key, count });
         doc.setFillColor(142, 31, 45); doc.rect(0, 0, 210, 48, 'F');
         doc.setTextColor(255, 248, 223); doc.setFontSize(22); doc.text('Rangilo Rass Dandiya', 105, 20, { align: 'center' });
         doc.setFontSize(12); doc.text('Pass Registration | Aksh Entertainment', 105, 31, { align: 'center' });
         doc.setTextColor(61, 23, 32); doc.setFontSize(12);
-        doc.text(`Pass ID: ${ticketId}`, 20, 68); doc.text(`Name: ${name}`, 20, 80); doc.text(`Mobile: ${mobile}`, 20, 92);
+        doc.text(`Pass ID: ${savedRegistration.ticketId || ticketId}`, 20, 68); doc.text(`Name: ${name}`, 20, 80); doc.text(`Mobile: ${mobile}`, 20, 92);
         if (email) doc.text(`Email: ${email}`, 20, 104);
         doc.text(`Category: ${labels[key]}`, 20, email ? 116 : 104); doc.text(`Number of Passes: ${count}`, 20, email ? 128 : 116);
         doc.text(`Total Amount: INR ${total}`, 20, email ? 140 : 128); doc.text(`Payment Reference: ${reference}`, 20, email ? 152 : 140);
@@ -201,8 +222,8 @@
         doc.setTextColor(142, 31, 45); doc.setFontSize(10); doc.text('Payment status: Pending verification', 20, email ? 202 : 190);
         doc.setTextColor(111, 58, 45); doc.text('Supported by Shreya Makeover | चेहरे पर लाये नयी निखार', 20, email ? 216 : 204);
         doc.text('Technical Partner & Sponsor: Placement Empire', 20, email ? 228 : 216);
-        doc.save(`${ticketId}.pdf`);
-        setStatus(`Pass generated successfully. Pass ID: ${ticketId}`, 'success');
+        doc.save(`${savedRegistration.ticketId || ticketId}.pdf`);
+        setStatus(`Pass generated successfully. Pass ID: ${savedRegistration.ticketId || ticketId}`, 'success');
       } catch (error) {
         console.error(error); setStatus('Unable to generate the pass. Please check your connection and try again.', 'error');
       } finally { submitBtn.disabled = false; }
