@@ -36,6 +36,8 @@
     .qr-caption { margin: 10px 0 0; color: #80665a; font-size: .8rem; }
     button { margin-top: 20px; padding: 14px; color: #fff; background: #8e1f2d; border: 0; border-radius: 9px; font-weight: 800; cursor: pointer; }
     button:hover { background: #6f1724; }
+    button.download { display: none; background: #c56a21; }
+    button.download.visible { display: block; }
     button:disabled { background: #aa9a90; cursor: not-allowed; }
     #status { min-height: 1.4em; margin: 14px 0 0; text-align: center; font-size: .9rem; line-height: 1.4; }
     #status.success { color: #18733d; } #status.error { color: #ad2533; } #status.info { color: #5e4d40; }
@@ -101,6 +103,7 @@
       <small class="hint">Use letters, numbers, and hyphens only.</small>
 
       <button type="submit" id="submitBtn">Generate Pass</button>
+      <button type="button" id="downloadBtn" class="download">Download Pass PDF</button>
       <p id="status" role="status" aria-live="polite"></p>
     </form>
     <section class="credits" aria-label="Sponsors and partners">
@@ -125,9 +128,12 @@
     const qrAmount = document.getElementById('qrAmount');
     const status = document.getElementById('status');
     const submitBtn = document.getElementById('submitBtn');
+    const downloadBtn = document.getElementById('downloadBtn');
     const UPI_ID = 'placementempire@slc';
     // Paste your deployed Google Apps Script Web App /exec URL between the quotes.
-    const BACKEND_URL = 'https://script.google.com/macros/s/AKfycbxDlnXAD5dQsSHJT5G-ZEr4Bkw2LxMBXm3pjF4I03CsJGceS0LwQPoQVPfK4YE2O6Wg/exec';
+    const BACKEND_URL = 'https://script.google.com/macros/s/AKfycbyITHOGImL7smLRYq9CeVhZpk2K8c8xxiumtU7Ip4-04cI9BrvG-fFASN5hpe4VQMiP/exec';
+    let currentPassBlob = null;
+    let currentPassFilename = '';
 
     function getSummary() {
       const key = category.value;
@@ -188,9 +194,47 @@
       return result;
     }
 
+    function createTicketPdf({ ticketId, name, mobile, email, reference, key, count, total }) {
+      if (!window.jspdf || typeof window.jspdf.jsPDF !== 'function') {
+        throw new Error('PDF library unavailable. Check your internet connection and reload the page.');
+      }
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      doc.setFillColor(142, 31, 45); doc.rect(0, 0, 210, 48, 'F');
+      doc.setTextColor(255, 248, 223); doc.setFontSize(22); doc.text('Rangilo Rass Dandiya', 105, 20, { align: 'center' });
+      doc.setFontSize(12); doc.text('Pass Registration | Aksh Entertainment', 105, 31, { align: 'center' });
+      doc.setTextColor(61, 23, 32); doc.setFontSize(12);
+      doc.text(`Pass ID: ${ticketId}`, 20, 68); doc.text(`Name: ${name}`, 20, 80); doc.text(`Mobile: ${mobile}`, 20, 92);
+      if (email) doc.text(`Email: ${email}`, 20, 104);
+      doc.text(`Category: ${labels[key]}`, 20, email ? 116 : 104); doc.text(`Number of Passes: ${count}`, 20, email ? 128 : 116);
+      doc.text(`Total Amount: INR ${total}`, 20, email ? 140 : 128); doc.text(`Payment Reference: ${reference}`, 20, email ? 152 : 140);
+      doc.text('Event Date: 15th October, 2026', 20, email ? 170 : 158);
+      doc.text('Venue: SM Garden, Bairiya Bus Stand, Muzaffarpur, Bihar', 20, email ? 182 : 170);
+      doc.setTextColor(142, 31, 45); doc.setFontSize(10); doc.text('Payment status: Pending verification', 20, email ? 202 : 190);
+      doc.setTextColor(111, 58, 45); doc.text('Supported by Shreya Makeover | चेहरे पर लाये नयी निखार', 20, email ? 216 : 204);
+      doc.text('Technical Partner & Sponsor: Placement Empire', 20, email ? 228 : 216);
+      return doc.output('blob');
+    }
+
+    function downloadPass() {
+      if (!currentPassBlob) {
+        setStatus('Generate the pass first, then download it.', 'error');
+        return;
+      }
+      const url = URL.createObjectURL(currentPassBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = currentPassFilename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
     category.addEventListener('change', updateSummary);
     quantity.addEventListener('input', updateSummary);
     window.addEventListener('load', updateSummary);
+    downloadBtn.addEventListener('click', downloadPass);
 
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
@@ -201,31 +245,20 @@
       submitBtn.disabled = true;
       setStatus('Generating your pass PDF...', 'info');
       try {
-        if (!window.jspdf || typeof window.jspdf.jsPDF !== 'function') throw new Error('PDF library unavailable');
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
         const name = document.getElementById('name').value.trim();
         const mobile = document.getElementById('mobile').value.trim();
         const email = document.getElementById('email').value.trim();
         const reference = document.getElementById('reference').value.trim();
         const savedRegistration = await saveRegistrationToSheet({ name, mobile, email, reference, key, count });
-        doc.setFillColor(142, 31, 45); doc.rect(0, 0, 210, 48, 'F');
-        doc.setTextColor(255, 248, 223); doc.setFontSize(22); doc.text('Rangilo Rass Dandiya', 105, 20, { align: 'center' });
-        doc.setFontSize(12); doc.text('Pass Registration | Aksh Entertainment', 105, 31, { align: 'center' });
-        doc.setTextColor(61, 23, 32); doc.setFontSize(12);
-        doc.text(`Pass ID: ${savedRegistration.ticketId || ticketId}`, 20, 68); doc.text(`Name: ${name}`, 20, 80); doc.text(`Mobile: ${mobile}`, 20, 92);
-        if (email) doc.text(`Email: ${email}`, 20, 104);
-        doc.text(`Category: ${labels[key]}`, 20, email ? 116 : 104); doc.text(`Number of Passes: ${count}`, 20, email ? 128 : 116);
-        doc.text(`Total Amount: INR ${total}`, 20, email ? 140 : 128); doc.text(`Payment Reference: ${reference}`, 20, email ? 152 : 140);
-        doc.text('Event Date: 15th October, 2026', 20, email ? 170 : 158);
-        doc.text('Venue: SM Garden, Bairiya Bus Stand, Muzaffarpur, Bihar', 20, email ? 182 : 170);
-        doc.setTextColor(142, 31, 45); doc.setFontSize(10); doc.text('Payment status: Pending verification', 20, email ? 202 : 190);
-        doc.setTextColor(111, 58, 45); doc.text('Supported by Shreya Makeover | चेहरे पर लाये नयी निखार', 20, email ? 216 : 204);
-        doc.text('Technical Partner & Sponsor: Placement Empire', 20, email ? 228 : 216);
-        doc.save(`${savedRegistration.ticketId || ticketId}.pdf`);
-        setStatus(`Pass generated successfully. Pass ID: ${savedRegistration.ticketId || ticketId}`, 'success');
+        const finalTicketId = savedRegistration.ticketId || ticketId;
+        currentPassBlob = createTicketPdf({ ticketId: finalTicketId, name, mobile, email, reference, key, count, total });
+        currentPassFilename = `${finalTicketId}.pdf`;
+        downloadBtn.classList.add('visible');
+        downloadPass();
+        setStatus(`Pass generated and downloaded. Pass ID: ${finalTicketId}. Payment is pending verification.`, 'success');
       } catch (error) {
-        console.error(error); setStatus('Unable to generate the pass. Please check your connection and try again.', 'error');
+        console.error(error);
+        setStatus(`Could not complete registration: ${error.message || 'Please try again.'}`, 'error');
       } finally { submitBtn.disabled = false; }
     });
     updateSummary();
