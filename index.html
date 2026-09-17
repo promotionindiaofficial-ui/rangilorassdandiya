@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Rangilo Rass Dandiya pass registration by Aksh Entertainment" />
+  <title>Rangilo Rass Dandiya | Pass Registration</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
+  <style>
+    :root { font-family: Inter, Arial, sans-serif; color: #3d1720; background: #210812; }
+    * { box-sizing: border-box; }
+    body { min-height: 100vh; margin: 0; padding: 22px; display: grid; place-items: center; background: radial-gradient(circle at top, #a83a29 0, #531322 42%, #210812 100%); }
+    .card { width: min(100%, 560px); overflow: hidden; background: #fffaf0; border: 3px solid #efb84a; border-radius: 22px; box-shadow: 0 18px 50px #11030799; }
+    .hero { padding: 30px 24px 24px; text-align: center; color: #fff8df; background: linear-gradient(135deg, #8e1f2d, #d85b2d); }
+    .eyebrow { margin: 0 0 8px; color: #ffd76a; font-size: .78rem; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; }
+    h1 { margin: 0; font-family: Georgia, serif; font-size: clamp(2rem, 8vw, 3.15rem); line-height: 1; }
+    .subtitle { margin: 12px 0 0; font-size: 1rem; font-weight: 700; }
+    .details { display: grid; gap: 8px; margin-top: 20px; padding: 14px; color: #fff6dc; background: #4b1426aa; border: 1px solid #f4ce69; border-radius: 12px; font-size: .94rem; }
+    .details strong { color: #ffd76a; }
+    form { padding: 24px; }
+    .intro { margin: 0 0 18px; color: #6d4d46; line-height: 1.45; }
+    label { display: block; margin-top: 14px; font-weight: 800; }
+    input, select, button { width: 100%; font: inherit; }
+    input, select { margin-top: 7px; padding: 12px 13px; color: #3d1720; background: #fff; border: 1px solid #d6bfa9; border-radius: 9px; }
+    input:focus, select:focus, button:focus-visible { outline: 3px solid #f1bd55aa; outline-offset: 2px; }
+    .hint { display: block; margin-top: 5px; color: #876f65; font-size: .78rem; }
+    .summary { margin-top: 20px; padding: 16px; background: #fff0c7; border: 1px solid #e6b84f; border-radius: 12px; }
+    .summary-row { display: flex; justify-content: space-between; gap: 16px; margin: 5px 0; }
+    .total { margin-top: 10px; padding-top: 10px; color: #8e1f2d; border-top: 1px dashed #c99b41; font-size: 1.25rem; font-weight: 900; }
+    .notice { margin: 16px 0 0; padding: 12px; color: #704019; background: #fff7e5; border-left: 4px solid #e1a12d; border-radius: 6px; font-size: .86rem; line-height: 1.4; }
+    .payment-box { margin-top: 16px; padding: 16px; color: #4b2830; text-align: center; background: #fff8e8; border: 1px solid #e6b84f; border-radius: 12px; }
+    .upi-id { display: inline-block; margin: 6px 0 10px; padding: 7px 10px; color: #8e1f2d; background: #fff0c7; border-radius: 6px; font-weight: 900; user-select: all; }
+    #paymentQr { display: inline-flex; min-width: 220px; min-height: 220px; align-items: center; justify-content: center; padding: 10px; background: #fff; border: 1px solid #d6b56b; border-radius: 8px; }
+    #paymentQr canvas, #paymentQr img { display: block; width: 200px; height: 200px; }
+    .qr-caption { margin: 10px 0 0; color: #80665a; font-size: .8rem; }
+    button { margin-top: 20px; padding: 14px; color: #fff; background: #8e1f2d; border: 0; border-radius: 9px; font-weight: 800; cursor: pointer; }
+    button:hover { background: #6f1724; }
+    button:disabled { background: #aa9a90; cursor: not-allowed; }
+    #status { min-height: 1.4em; margin: 14px 0 0; text-align: center; font-size: .9rem; line-height: 1.4; }
+    #status.success { color: #18733d; } #status.error { color: #ad2533; } #status.info { color: #5e4d40; }
+    .footer { padding: 0 24px 22px; color: #80665a; text-align: center; font-size: .8rem; }
+    .credits { display: grid; gap: 8px; margin: 0 24px 20px; padding: 14px; color: #6f3a2d; text-align: center; background: #fff0c7; border: 1px solid #e6b84f; border-radius: 12px; line-height: 1.4; }
+    .credits strong { color: #8e1f2d; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <header class="hero">
+      <p class="eyebrow">Aksh Entertainment presents</p>
+      <h1>Rangilo Rass Dandiya</h1>
+      <p class="subtitle">Pass Registration</p>
+      <div class="details">
+        <div><strong>Date:</strong> 15th October, 2026</div>
+        <div><strong>Venue:</strong> SM Garden, Bairiya Bus Stand, Muzaffarpur, Bihar</div>
+      </div>
+    </header>
+
+    <form id="passForm" novalidate>
+      <p class="intro">Choose your pass category and the number of passes required. Your total amount will be calculated automatically.</p>
+
+      <label for="name">Full Name</label>
+      <input id="name" name="name" type="text" required minlength="2" maxlength="100" autocomplete="name" placeholder="Enter your full name" />
+
+      <label for="mobile">Mobile Number</label>
+      <input id="mobile" name="mobile" type="tel" required pattern="[6-9][0-9]{9}" maxlength="10" inputmode="numeric" autocomplete="tel" placeholder="10-digit mobile number" />
+
+      <label for="email">Email Address <span class="hint" style="display:inline">(optional)</span></label>
+      <input id="email" name="email" type="email" maxlength="254" autocomplete="email" placeholder="you@example.com" />
+
+      <label for="category">Pass Category</label>
+      <select id="category" name="category" required>
+        <option value="">Select Pass Category</option>
+        <option value="family" data-price="499">Family Pass — ₹499</option>
+        <option value="couple" data-price="175">Couple Pass — ₹175</option>
+        <option value="single" data-price="99">Single Pass — ₹99</option>
+      </select>
+
+      <label for="quantity">Number of Passes Required</label>
+      <input id="quantity" name="quantity" type="number" required min="1" max="20" step="1" value="1" inputmode="numeric" />
+      <small class="hint">You can request up to 20 passes in one registration.</small>
+
+      <section class="summary" aria-live="polite">
+        <div class="summary-row"><span>Selected pass</span><strong id="selectedPass">—</strong></div>
+        <div class="summary-row"><span>Price per pass</span><strong id="unitPrice">₹0</strong></div>
+        <div class="summary-row"><span>Quantity</span><strong id="passCount">1</strong></div>
+        <div class="summary-row total"><span>Total Amount</span><strong id="totalAmount">₹0</strong></div>
+      </section>
+
+      <div class="notice"><strong>Payment instructions:</strong> Scan the dynamic QR code below or pay using the official UPI ID. Please verify that the amount shown in your UPI app matches the total before completing payment.</div>
+
+      <section class="payment-box" aria-live="polite">
+        <strong>Pay securely via UPI</strong><br />
+        UPI ID: <span class="upi-id">placementempire@slc</span>
+        <div id="paymentQr" aria-label="Dynamic UPI payment QR code">Select a pass category to generate the QR code.</div>
+        <p class="qr-caption">The QR code includes your selected pass amount: <strong id="qrAmount">₹0</strong></p>
+      </section>
+
+      <label for="reference">Payment Reference / UTR</label>
+      <input id="reference" name="reference" type="text" required minlength="6" maxlength="40" pattern="[A-Za-z0-9-]+" autocomplete="off" placeholder="Enter UTR after payment" />
+      <small class="hint">Use letters, numbers, and hyphens only.</small>
+
+      <button type="submit" id="submitBtn">Generate Pass</button>
+      <p id="status" role="status" aria-live="polite"></p>
+    </form>
+    <section class="credits" aria-label="Sponsors and partners">
+      <div><strong>Supported by Shreya Makeover</strong><br /><span lang="hi">चेहरे पर लाये नयी निखार</span></div>
+      <div><strong>Technical Partner &amp; Sponsor:</strong> Placement Empire</div>
+    </section>
+    <div class="footer">Organised by <strong>Aksh Entertainment</strong><br />Pass validity is subject to payment verification.</div>
+  </main>
+
+  <script>
+    'use strict';
+    const prices = { family: 499, couple: 175, single: 99 };
+    const labels = { family: 'Family Pass', couple: 'Couple Pass', single: 'Single Pass' };
+    const form = document.getElementById('passForm');
+    const category = document.getElementById('category');
+    const quantity = document.getElementById('quantity');
+    const selectedPass = document.getElementById('selectedPass');
+    const unitPrice = document.getElementById('unitPrice');
+    const passCount = document.getElementById('passCount');
+    const totalAmount = document.getElementById('totalAmount');
+    const paymentQr = document.getElementById('paymentQr');
+    const qrAmount = document.getElementById('qrAmount');
+    const status = document.getElementById('status');
+    const submitBtn = document.getElementById('submitBtn');
+    const UPI_ID = 'placementempire@slc';
+
+    function getSummary() {
+      const key = category.value;
+      const count = Math.max(1, Math.min(20, Number.parseInt(quantity.value, 10) || 1));
+      const price = prices[key] || 0;
+      return { key, count, price, total: price * count };
+    }
+
+    function updateSummary() {
+      const { key, count, price, total } = getSummary();
+      quantity.value = count;
+      selectedPass.textContent = labels[key] || '—';
+      unitPrice.textContent = `₹${price}`;
+      passCount.textContent = count;
+      totalAmount.textContent = `₹${total}`;
+      qrAmount.textContent = `₹${total}`;
+      generatePaymentQr({ key, count, total });
+    }
+
+    function generatePaymentQr({ key, count, total }) {
+      paymentQr.replaceChildren();
+      if (!key || !total || typeof QRCode !== 'function') {
+        paymentQr.textContent = key ? 'QR code library is loading…' : 'Select a pass category to generate the QR code.';
+        return;
+      }
+      const payload = new URLSearchParams({
+        pa: UPI_ID,
+        pn: 'Placement Empire',
+        am: total.toFixed(2),
+        cu: 'INR',
+        tn: `Rangilo Rass Dandiya - ${labels[key]} x${count}`
+      });
+      new QRCode(paymentQr, {
+        text: `upi://pay?${payload.toString()}`,
+        width: 200,
+        height: 200,
+        correctLevel: QRCode.CorrectLevel.M
+      });
+    }
+
+    function setStatus(message, type = 'info') { status.textContent = message; status.className = type; }
+
+    category.addEventListener('change', updateSummary);
+    quantity.addEventListener('input', updateSummary);
+    window.addEventListener('load', updateSummary);
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      updateSummary();
+      if (!form.reportValidity()) { setStatus('Please complete all required fields correctly.', 'error'); return; }
+      const { key, count, total } = getSummary();
+      const ticketId = `RRD-${Date.now()}`;
+      submitBtn.disabled = true;
+      setStatus('Generating your pass PDF...', 'info');
+      try {
+        if (!window.jspdf || typeof window.jspdf.jsPDF !== 'function') throw new Error('PDF library unavailable');
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        const name = document.getElementById('name').value.trim();
+        const mobile = document.getElementById('mobile').value.trim();
+        const email = document.getElementById('email').value.trim();
+        const reference = document.getElementById('reference').value.trim();
+        doc.setFillColor(142, 31, 45); doc.rect(0, 0, 210, 48, 'F');
+        doc.setTextColor(255, 248, 223); doc.setFontSize(22); doc.text('Rangilo Rass Dandiya', 105, 20, { align: 'center' });
+        doc.setFontSize(12); doc.text('Pass Registration | Aksh Entertainment', 105, 31, { align: 'center' });
+        doc.setTextColor(61, 23, 32); doc.setFontSize(12);
+        doc.text(`Pass ID: ${ticketId}`, 20, 68); doc.text(`Name: ${name}`, 20, 80); doc.text(`Mobile: ${mobile}`, 20, 92);
+        if (email) doc.text(`Email: ${email}`, 20, 104);
+        doc.text(`Category: ${labels[key]}`, 20, email ? 116 : 104); doc.text(`Number of Passes: ${count}`, 20, email ? 128 : 116);
+        doc.text(`Total Amount: INR ${total}`, 20, email ? 140 : 128); doc.text(`Payment Reference: ${reference}`, 20, email ? 152 : 140);
+        doc.text('Event Date: 15th October, 2026', 20, email ? 170 : 158);
+        doc.text('Venue: SM Garden, Bairiya Bus Stand, Muzaffarpur, Bihar', 20, email ? 182 : 170);
+        doc.setTextColor(142, 31, 45); doc.setFontSize(10); doc.text('Payment status: Pending verification', 20, email ? 202 : 190);
+        doc.setTextColor(111, 58, 45); doc.text('Supported by Shreya Makeover | चेहरे पर लाये नयी निखार', 20, email ? 216 : 204);
+        doc.text('Technical Partner & Sponsor: Placement Empire', 20, email ? 228 : 216);
+        doc.save(`${ticketId}.pdf`);
+        setStatus(`Pass generated successfully. Pass ID: ${ticketId}`, 'success');
+      } catch (error) {
+        console.error(error); setStatus('Unable to generate the pass. Please check your connection and try again.', 'error');
+      } finally { submitBtn.disabled = false; }
+    });
+    updateSummary();
+  </script>
+</body>
+</html>
