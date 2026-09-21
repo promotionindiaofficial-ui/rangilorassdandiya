@@ -7,6 +7,7 @@
   <title>Rangilo Rass Dandiya | Pass Registration</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
   <style>
     :root { font-family: Inter, Arial, sans-serif; color: #3d1720; background: #210812; }
     * { box-sizing: border-box; }
@@ -29,6 +30,11 @@
     .summary-row { display: flex; justify-content: space-between; gap: 16px; margin: 5px 0; }
     .total { margin-top: 10px; padding-top: 10px; color: #8e1f2d; border-top: 1px dashed #c99b41; font-size: 1.25rem; font-weight: 900; }
     .notice { margin: 16px 0 0; padding: 12px; color: #704019; background: #fff7e5; border-left: 4px solid #e1a12d; border-radius: 6px; font-size: .86rem; line-height: 1.4; }
+    .confirmation { display: none; margin-top: 18px; padding: 16px; background: #edf9f0; border: 1px solid #8bc99d; border-radius: 12px; }
+    .confirmation.visible { display: block; }
+    .confirmation h2 { margin: 0 0 8px; color: #18733d; font-size: 1.1rem; }
+    .confirmation button { margin-top: 12px; }
+    .ticket-qr-source { position: fixed; left: -10000px; top: 0; width: 220px; height: 220px; }
     .payment-box { margin-top: 16px; padding: 16px; color: #4b2830; text-align: center; background: #fff8e8; border: 1px solid #e6b84f; border-radius: 12px; }
     .upi-id { display: inline-block; margin: 6px 0 10px; padding: 7px 10px; color: #8e1f2d; background: #fff0c7; border-radius: 6px; font-weight: 900; user-select: all; }
     #paymentQr { display: inline-flex; min-width: 220px; min-height: 220px; align-items: center; justify-content: center; padding: 10px; background: #fff; border: 1px solid #d6b56b; border-radius: 8px; }
@@ -105,6 +111,15 @@
       <button type="submit" id="submitBtn">Generate Pass</button>
       <button type="button" id="downloadBtn" class="download">Download Pass PDF</button>
       <p id="status" role="status" aria-live="polite"></p>
+      <section id="confirmation" class="confirmation" aria-live="polite">
+        <h2>Confirmation and Verified Pass Download</h2>
+        <p id="confirmationText">Your pass is awaiting payment verification.</p>
+        <label for="confirmationTicket">Ticket ID</label>
+        <input id="confirmationTicket" type="text" readonly />
+        <button type="button" id="verifyDownloadBtn">Check Verification Status</button>
+        <button type="button" id="verifiedDownloadBtn" class="download">Download Verified Pass</button>
+        <p id="verificationStatus" role="status" aria-live="polite"></p>
+      </section>
     </form>
     <section class="credits" aria-label="Sponsors and partners">
       <div><strong>Supported by Shreya Makeover</strong><br /><span lang="hi">चेहरे पर लाये नयी निखार</span></div>
@@ -129,9 +144,15 @@
     const status = document.getElementById('status');
     const submitBtn = document.getElementById('submitBtn');
     const downloadBtn = document.getElementById('downloadBtn');
+    const confirmation = document.getElementById('confirmation');
+    const confirmationText = document.getElementById('confirmationText');
+    const confirmationTicket = document.getElementById('confirmationTicket');
+    const verifyDownloadBtn = document.getElementById('verifyDownloadBtn');
+    const verifiedDownloadBtn = document.getElementById('verifiedDownloadBtn');
+    const verificationStatus = document.getElementById('verificationStatus');
     const UPI_ID = 'placementempire@slc';
     // Paste your deployed Google Apps Script Web App /exec URL between the quotes.
-    const BACKEND_URL = 'https://script.google.com/macros/s/AKfycbyIz_VwFgdy7NsIYUeLYd58Gbf8TqiRn4T1ASdadCOpwgr2pscbDTJ1XJdGCC56sAVP/exec';
+    const BACKEND_URL = 'PASTE_YOUR_GOOGLE_APPS_SCRIPT_EXEC_URL_HERE';
     let currentPassBlob = null;
     let currentPassFilename = '';
 
@@ -194,23 +215,42 @@
       return result;
     }
 
-    function createTicketPdf({ ticketId, name, mobile, email, reference, key, count, total }) {
+    async function createQrDataUrl(text) {
+      if (typeof QRCode !== 'function') throw new Error('QR code library unavailable. Reload the page and try again.');
+      const container = document.createElement('div');
+      container.className = 'ticket-qr-source';
+      document.body.appendChild(container);
+      try {
+        new QRCode(container, { text, width: 220, height: 220, correctLevel: QRCode.CorrectLevel.M });
+        await new Promise(resolve => requestAnimationFrame(resolve));
+        const canvas = container.querySelector('canvas');
+        if (!canvas) throw new Error('Ticket QR code could not be generated.');
+        return canvas.toDataURL('image/png');
+      } finally { container.remove(); }
+    }
+
+    async function createTicketPdf({ ticketId, name, mobile, email, reference, key, count, total, paymentStatus = 'PENDING_VERIFICATION' }) {
       if (!window.jspdf || typeof window.jspdf.jsPDF !== 'function') {
         throw new Error('PDF library unavailable. Check your internet connection and reload the page.');
       }
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
+      const qrPayload = `RRD|${ticketId}|${reference}`;
+      const qrDataUrl = await createQrDataUrl(qrPayload);
       doc.setFillColor(142, 31, 45); doc.rect(0, 0, 210, 48, 'F');
       doc.setTextColor(255, 248, 223); doc.setFontSize(22); doc.text('Rangilo Rass Dandiya', 105, 20, { align: 'center' });
       doc.setFontSize(12); doc.text('Pass Registration | Aksh Entertainment', 105, 31, { align: 'center' });
       doc.setTextColor(61, 23, 32); doc.setFontSize(12);
+      doc.addImage(qrDataUrl, 'PNG', 151, 55, 40, 40);
+      doc.setFontSize(8); doc.text('Scan for ticket verification', 151, 98);
+      doc.setFontSize(12);
       doc.text(`Pass ID: ${ticketId}`, 20, 68); doc.text(`Name: ${name}`, 20, 80); doc.text(`Mobile: ${mobile}`, 20, 92);
       if (email) doc.text(`Email: ${email}`, 20, 104);
       doc.text(`Category: ${labels[key]}`, 20, email ? 116 : 104); doc.text(`Number of Passes: ${count}`, 20, email ? 128 : 116);
       doc.text(`Total Amount: INR ${total}`, 20, email ? 140 : 128); doc.text(`Payment Reference: ${reference}`, 20, email ? 152 : 140);
       doc.text('Event Date: 15th October, 2026', 20, email ? 170 : 158);
       doc.text('Venue: SM Garden, Bairiya Bus Stand, Muzaffarpur, Bihar', 20, email ? 182 : 170);
-      doc.setTextColor(142, 31, 45); doc.setFontSize(10); doc.text('Payment status: Pending verification', 20, email ? 202 : 190);
+      doc.setTextColor(paymentStatus === 'VERIFIED' ? 24 : 142, paymentStatus === 'VERIFIED' ? 115 : 31, paymentStatus === 'VERIFIED' ? 61 : 45); doc.setFontSize(10); doc.text(`Payment status: ${paymentStatus === 'VERIFIED' ? 'VERIFIED' : 'Pending verification'}`, 20, email ? 202 : 190);
       doc.setTextColor(111, 58, 45); doc.text('Supported by Shreya Makeover | चेहरे पर लाये नयी निखार', 20, email ? 216 : 204);
       doc.text('Technical Partner & Sponsor: Placement Empire', 20, email ? 228 : 216);
       return doc.output('blob');
@@ -230,6 +270,39 @@
       link.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
+
+    async function checkVerifiedPass() {
+      const ticketId = confirmationTicket.value.trim();
+      const mobile = document.getElementById('mobile').value.trim();
+      const utr = document.getElementById('reference').value.trim();
+      if (!ticketId || !mobile || !utr) { verificationStatus.textContent = 'Ticket ID, mobile number, and UTR are required.'; return; }
+      if (BACKEND_URL === 'PASTE_YOUR_GOOGLE_APPS_SCRIPT_EXEC_URL_HERE') { verificationStatus.textContent = 'Google Apps Script /exec URL has not been configured.'; return; }
+      verifyDownloadBtn.disabled = true;
+      verificationStatus.textContent = 'Checking payment verification…';
+      try {
+        const response = await fetch(BACKEND_URL, {
+          method: 'POST', mode: 'cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'customerLookup', ticketId, mobile, utr })
+        });
+        const result = await response.json();
+        if (!result.ok) throw new Error(result.error || 'Verification lookup failed.');
+        if (!result.verified) {
+          verifiedDownloadBtn.classList.remove('visible');
+          verificationStatus.textContent = `Current status: ${result.paymentStatus || 'PENDING_VERIFICATION'}. Please try again after the organiser verifies your payment.`;
+          return;
+        }
+        const pass = result.pass;
+        currentPassBlob = await createTicketPdf({ ticketId: pass.ticketId, name: pass.name, mobile: pass.mobile, email: pass.email, reference: pass.utr, key: pass.category, count: Number(pass.quantity), total: Number(pass.total), paymentStatus: 'VERIFIED' });
+        currentPassFilename = `${pass.ticketId}-verified.pdf`;
+        verifiedDownloadBtn.classList.add('visible');
+        verificationStatus.textContent = 'Payment verified. Your verified pass is ready to download.';
+        confirmationText.textContent = 'Payment verified successfully by Aksh Entertainment.';
+      } catch (error) { verificationStatus.textContent = error.message || 'Unable to check verification status.'; }
+      finally { verifyDownloadBtn.disabled = false; }
+    }
+
+    verifiedDownloadBtn.addEventListener('click', downloadPass);
+    verifyDownloadBtn.addEventListener('click', checkVerifiedPass);
 
     category.addEventListener('change', updateSummary);
     quantity.addEventListener('input', updateSummary);
@@ -251,9 +324,11 @@
         const reference = document.getElementById('reference').value.trim();
         const savedRegistration = await saveRegistrationToSheet({ name, mobile, email, reference, key, count });
         const finalTicketId = savedRegistration.ticketId || ticketId;
-        currentPassBlob = createTicketPdf({ ticketId: finalTicketId, name, mobile, email, reference, key, count, total });
+        currentPassBlob = await createTicketPdf({ ticketId: finalTicketId, name, mobile, email, reference, key, count, total });
         currentPassFilename = `${finalTicketId}.pdf`;
         downloadBtn.classList.add('visible');
+        confirmationTicket.value = finalTicketId;
+        confirmation.classList.add('visible');
         downloadPass();
         setStatus(`Pass generated and downloaded. Pass ID: ${finalTicketId}. Payment is pending verification.`, 'success');
       } catch (error) {
