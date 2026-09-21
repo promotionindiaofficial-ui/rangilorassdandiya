@@ -151,7 +151,7 @@
     const verifiedDownloadBtn = document.getElementById('verifiedDownloadBtn');
     const verificationStatus = document.getElementById('verificationStatus');
     const UPI_ID = 'placementempire@slc';
-    // Paste your deployed Google Apps Script Web App /exec URL between the quotes.
+    // Paste the deployed Google Apps Script Web App URL ending in /exec between the quotes.
     const BACKEND_URL = 'https://script.google.com/macros/s/AKfycbxCBEljx-NTOqjJHBKoZxy7OgsYuXR-H5F1dRgTdoi0YsmkEIPzR5_cEMQDEAu3O_ma/exec';
     let currentPassBlob = null;
     let currentPassFilename = '';
@@ -197,22 +197,34 @@
 
     function setStatus(message, type = 'info') { status.textContent = message; status.className = type; }
 
-    async function saveRegistrationToSheet({ name, mobile, email, reference, key, count }) {
-      if (BACKEND_URL === 'PASTE_YOUR_GOOGLE_APPS_SCRIPT_EXEC_URL_HERE') {
-        throw new Error('Google Apps Script /exec URL has not been configured.');
+    function getBackendUrl() {
+      const url = BACKEND_URL.trim();
+      if (url.includes('PASTE_YOUR_')) throw new Error('The Apps Script /exec URL is still a placeholder in this HTML file.');
+      if (!/^https:\/\/script\.google\.com\/macros\/s\/[^\s/]+\/exec$/.test(url)) {
+        throw new Error('Invalid Apps Script URL. Paste the complete HTTPS URL ending exactly with /exec.');
       }
-      const response = await fetch(BACKEND_URL, {
-        method: 'POST',
-        mode: 'cors',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({
-          action: 'register', name, mobile, email,
-          utr: reference, categoryKey: key, quantity: count
-        })
-      });
-      const result = await response.json();
-      if (!result.ok) throw new Error(result.error || 'Registration was not saved.');
+      return url;
+    }
+
+    async function postToBackend(payload) {
+      let response;
+      try {
+        response = await fetch(getBackendUrl(), {
+          method: 'POST', mode: 'cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload)
+        });
+      } catch (error) {
+        throw new Error('Cannot reach Apps Script. Redeploy as Web app with Execute as Me and Who has access Anyone, then use the /exec URL—not /dev.');
+      }
+      if (!response.ok) throw new Error(`Apps Script returned HTTP ${response.status}. Check the deployment and /exec URL.`);
+      let result;
+      try { result = await response.json(); }
+      catch (error) { throw new Error('Apps Script did not return JSON. Confirm that the latest backend is deployed at this /exec URL.'); }
+      if (!result.ok) throw new Error(result.error || 'Apps Script rejected the request.');
       return result;
+    }
+
+    async function saveRegistrationToSheet({ name, mobile, email, reference, key, count }) {
+      return postToBackend({ action: 'register', name, mobile, email, utr: reference, categoryKey: key, quantity: count });
     }
 
     async function createQrDataUrl(text) {
@@ -276,16 +288,10 @@
       const mobile = document.getElementById('mobile').value.trim();
       const utr = document.getElementById('reference').value.trim();
       if (!ticketId || !mobile || !utr) { verificationStatus.textContent = 'Ticket ID, mobile number, and UTR are required.'; return; }
-      if (BACKEND_URL === 'PASTE_YOUR_GOOGLE_APPS_SCRIPT_EXEC_URL_HERE') { verificationStatus.textContent = 'Google Apps Script /exec URL has not been configured.'; return; }
       verifyDownloadBtn.disabled = true;
       verificationStatus.textContent = 'Checking payment verification…';
       try {
-        const response = await fetch(BACKEND_URL, {
-          method: 'POST', mode: 'cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: 'customerLookup', ticketId, mobile, utr })
-        });
-        const result = await response.json();
-        if (!result.ok) throw new Error(result.error || 'Verification lookup failed.');
+        const result = await postToBackend({ action: 'customerLookup', ticketId, mobile, utr });
         if (!result.verified) {
           verifiedDownloadBtn.classList.remove('visible');
           verificationStatus.textContent = `Current status: ${result.paymentStatus || 'PENDING_VERIFICATION'}. Please try again after the organiser verifies your payment.`;
